@@ -36,7 +36,6 @@
     const textInput = document.querySelector('.add-form-text');
     const addButton = document.querySelector('.add-form-button');
 
-    // Данные: у каждого комментария есть likes (число) и isLiked (булево)
     const comments = [
       {
         name: 'Глеб Фокин',
@@ -63,15 +62,28 @@
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
-    // Обработчики лайков: вешаем после каждой отрисовки
+    // Защита от HTML-разметки: заменяем опасные символы на безопасные.
+    // Важно: & заменяем первым, иначе испортим уже вставленные &lt; и т.п.
+    function escapeHtml(str) {
+      return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    // Лайки
     function initLikeButtons() {
       const likeButtons = document.querySelectorAll('.like-button');
 
       for (const likeButton of likeButtons) {
-        likeButton.addEventListener('click', () => {
+        likeButton.addEventListener('click', (event) => {
+          // Не даем событию «всплыть» до карточки, иначе сработает ответ
+          event.stopPropagation();
+
           const comment = comments[likeButton.dataset.index];
 
-          // Меняем только данные в массиве
           if (comment.isLiked) {
             comment.likes--;
           } else {
@@ -79,24 +91,39 @@
           }
           comment.isLiked = !comment.isLiked;
 
-          // И заново рисуем весь список
           renderComments();
         });
       }
     }
 
-    // Рендер-функция: строит разметку из массива
+    // Ответ на комментарий по клику на карточку
+    function initReplyHandlers() {
+      const commentElements = document.querySelectorAll('.comment');
+
+      for (const commentElement of commentElements) {
+        commentElement.addEventListener('click', () => {
+          const comment = comments[commentElement.dataset.index];
+
+          // Берем исходный текст из массива (не экранированный),
+          // экранирование произойдет при отрисовке
+          textInput.value = `> ${comment.name}: ${comment.text}\n\n`;
+          textInput.classList.remove('error');
+          textInput.focus();
+        });
+      }
+    }
+
     function renderComments() {
       listElement.innerHTML = comments
         .map((comment, index) => {
           return `
-            <li class="comment">
+            <li class="comment" data-index="${index}">
               <div class="comment-header">
-                <div>${comment.name}</div>
+                <div>${escapeHtml(comment.name)}</div>
                 <div>${comment.date}</div>
               </div>
               <div class="comment-body">
-                <div class="comment-text">${comment.text}</div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
               </div>
               <div class="comment-footer">
                 <div class="likes">
@@ -112,13 +139,12 @@
         .join('');
 
       initLikeButtons();
+      initReplyHandlers();
     }
 
-    // Убираем подсветку ошибки, когда пользователь начал вводить
     nameInput.addEventListener('input', () => nameInput.classList.remove('error'));
     textInput.addEventListener('input', () => textInput.classList.remove('error'));
 
-    // Добавление комментария: кладем в массив и перерисовываем
     addButton.addEventListener('click', () => {
       const name = nameInput.value.trim();
       const text = textInput.value.trim();
@@ -141,7 +167,6 @@
       textInput.value = '';
     });
 
-    // Первая отрисовка при загрузке страницы
     renderComments();
   </script>
 </html>
